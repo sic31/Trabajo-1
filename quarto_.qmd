@@ -165,6 +165,9 @@ bgtest(m1)
 ```{r}
 # a. Procedimiento gráfico
 # - Gráfico de residuales estandarizados vs variable respuesta
+var_cuanti <- subset(datos, select = c("Weight", "Battery", "Price", "Screen","Storage","RAM"))
+residuales <- rstandard(m1) #Calcula residuales estandarizados
+residuales
 plot(var_cuanti$Price,residuales)
 abline(h=0)
 #Ideal
@@ -201,6 +204,9 @@ En DFBETA encontramos deficiencias en las marcas Apple, Asus y Dell.
 Luego de multiples intentos e investigaciones, la unica solucion que encontramos es aplicar logaritmo a la variable dependiente "Precio" y poder aproximarnos a un modelo lo mas cercano posible al visto en clase.
 
 ```{r}
+datos1 <- datos[-c(6,8,10,11,14,17,25,28,34,35,52,72,84,103,106,125,133,137,139,149,
+                   155,157,160,161,162,163,164,166,170,174,175,176,177,183,185,188,
+                   192,197,203,204,206),]
 mfinal_log <- lm(log(Price) ~ . - Model, data=datos1)
 summary(mfinal_log)
 ```
