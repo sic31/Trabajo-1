@@ -1,0 +1,227 @@
+---
+title: "Predicción del precio de los portátiles mediante análisis multivariable "
+author: "Simón Cardona, Juan Pablo Rendón"
+theme: solar
+lang: es
+format: 
+  html:
+    toc: true
+    toc-location: left
+    number-sections: true
+editor: visual
+---
+
+![](resize.jpeg)
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = F, warning = F)
+```
+
+## Preguntas de estudio
+
+### Pregunta principal
+
+¿Influyen las variables procesador, tamaño de la pantalla y la batería en cuanto al precio de un portátil?
+
+### Preguntas auxiliares
+
+¿El tipo de procesador afecta su precio?
+
+¿La relación entre el tamaño de pantalla y la durabilidad de una batería importa o afecta el precio?
+
+## Objetivos
+
+### Objetivo General
+
+Determinar estadísticamente, cuál o cuáles variables influyen estrechamente en el precio de un portátil.
+
+### Objetivos especificos
+
+-   Analizar qué tipo de procesador fluctua mas su precio.
+-   Concluir si la relación mayor pantalla y mayor durabilidad de batería impactan en el costo de un portátil
+
+```{r}
+
+```
+
+## Clasificación de Variables
+
+**Variables cualitativas:**
+
+1.  **Marca**: Es una variable categórica que describe el fabricante de la computadora (Dell, HP, Apple, Lenovo).
+
+2.  **Modelo**: Es un identificador único para cada computadora portátil, aunque es numérico, su función es categórica ya que no tiene un valor cuantitativo real.
+
+3.  **Procesador**: Categórica, describe el tipo de procesador .
+
+4.  **Tarjeta gráfica**: Categórica, describe el tipo de GPU.
+
+5.  **Sistema operativo**: Categórica, describe el sistema operativo.
+
+**Variables cuantitativas:**
+
+1.  **RAM (GB)**: Cuantitativa continua, mide la cantidad de memoria.
+
+2.  **Almacenamiento (GB)**: Cuantitativa discreta, mide la capacidad de almacenamiento.
+
+3.  **Tamaño de pantalla (pulgadas)**: Cuantitativa continua.
+
+4.  **Peso (kg)**: Cuantitativa continua.
+
+5.  **Duración de la batería (horas)**: Cuantitativa continua.
+
+6.  **Precio (\$)**: Cuantitativa continua.
+
+7.  **Garantía (años)**: Cuantitativa discreta.
+
+## Análisis exploratorio de datos
+
+Esta base de datos contiene las caracteristicas principales de los computadores portatiles de disferentes gamas de usos, configuraciones y lo que ofrece en cuanto a rendimiento, portabilidad y precio.
+
+El precio se da en dolares americanos.
+    ```{r}
+    #| label: fig-mpgwt
+    #| fig-cap: "Diagrama de dispersion"
+    
+    library(ggplot2)
+    library(readr)
+
+    # Leer un archivo CSV
+    datos <- read_csv("laptop Price Prediction Dataset.csv")
+
+    ggplot(datos, aes(x = `Price`)) +
+  geom_histogram(binwidth = 100, fill = "skyblue", color = "black") +
+  labs(title = "Histograma de Precio ($)", x = "Precio ($)", y = "Frecuencia") +
+  theme_minimal()
+    ```
+
+A partir de este histograma queremos conocer la relacion entre el precio y la duracion de la bateria.
+
+```{r}
+# Boxplot
+ggplot(datos, aes(x = `Battery`, y = `Price`)) + 
+  geom_boxplot()
+```
+Ahora nos parece muy importante detallar en la relacion entre el precio y la garantia.
+
+```{r}
+ggplot(datos, aes(x=Screen, y=Price)) + 
+  geom_boxplot() +
+  labs(title="Distribución del precio por tamaño de pantalla")
+```
+
+## Análisis de regresion multiple
+
+Luego de clasificar las variables en cualitativas y cuantitativas y de hacer el analisis exploratorio de datos, se da inicio al análisis de regresion multiple siguiendo los pasos dados para la misma.
+
+### Análisis exploratorio de datos.
+
+Este paso fue cumplido en la seccion anterior.
+
+### Análisis de multicolinealidad
+
+A continuacion se procedió a realizar el analisis de multicolinealidad usando la libreria "car". Hemos creado un primer modelo lineal al cual le haremos la prueba usando la funcion "vif".
+
+```{r}
+m1 <- lm(Price ~ . - Model, data=datos)
+
+library(car)
+vif(m1) 
+```
+
+El VIF mide cuánto aumenta la varianza de los coeficientes estimados debido a la colinealidad entre las variables independientes en un modelo de regresión. Un VIF de 1 indica que no hay colinealidad, mientras que valores mayores a 10 suelen indicar una colinealidad problemática.
+
+Todos los valores de GVIF son cercanos a 1 (por ejemplo, Brand = 1.049, Processor = 1.031, RAM = 1.010, etc.), lo que sugiere que no hay una colinealidad significativa entre las variables. Esto es lo ideal ya que indica que las variables no están altamente correlacionadas entre sí.
+
+### Análisis del modelo
+
+#### Normalidad
+
+Usaremos la prueba de Shapiro-Wilk para averiguar la normalidad de este modelo.
+
+```{r}
+library(tseries)
+library(nortest)
+
+shapiro.test(m1$residuals)
+```
+
+#### Varianza constante (homocedasticidad)
+
+```{r}
+library(lmtest)
+bptest(m1)
+```
+
+#### Independencia
+
+```{r}
+library(lmtest)
+bgtest(m1)
+```
+
+#### Identificar outliers
+
+```{r}
+# a. Procedimiento gráfico
+# - Gráfico de residuales estandarizados vs variable respuesta
+plot(var_cuanti$Price,residuales)
+abline(h=0)
+#Ideal
+```
+
+Haciendo el procedimiento grafico encontramos que esta sigue la tendencia ideal, lo cual es un buen indicio.
+
+```{r}
+influence.measures(m1)
+```
+
+Mediante la funcion "influence.measures" podemos encontrar diversos datos estatisticos, como lo son DDFITS, DFBETA, Distancia de Cook, etc...
+
+```{r}
+p=10
+n = 3000
+prueba_ddfits = 2*sqrt(p/n) #0.1154700
+prueba_ddfits
+
+prueba_dfbeta = 2/sqrt(n)
+prueba_dfbeta #0.03651484
+```
+
+Como esta es una muestra grande debemos encontrar los puntos de influencia en los que |DDFITS| es mayor a 0.1154700. Lo mismo se realiza para |DFBETA|, esta vez mayores a 0.03651484.
+
+Utilizando la distancia de Cook no encontramos ninguno que cumpliera la condicion.
+
+Para DDFITS separamos los siguentes filas: 6,8,10,11,14,17,25,28,34,35,52,72,84,103,106,125,133,137,139,149, 155,157,160,161,162,163,164,166,170,174,175,176,177,183,185,188, 192,197,203,204 y 206
+
+En DFBETA encontramos deficiencias en las marcas Apple, Asus y Dell.
+
+### Seleccion de variables
+
+Luego de multiples intentos e investigaciones, la unica solucion que encontramos es aplicar logaritmo a la variable dependiente "Precio" y poder aproximarnos a un modelo lo mas cercano posible al visto en clase.
+
+```{r}
+mfinal_log <- lm(log(Price) ~ . - Model, data=datos1)
+summary(mfinal_log)
+```
+
+```{r}
+qqPlot(mfinal_log$residuals, xlab = 'Cuantiles de distribucion normal',
+       ylab = 'Cuantiles de residuales', pch = 16, col = "orange",
+       col.lines = "red")
+```
+
+A pesar de que no fue el grafico esperado fue la unica que nos dio una mayor porcion de residuales dentro de la zona roja.
+
+```{r}
+modb<- step(mfinal_log, trace = T, direction = "backward")
+modb
+summary(modb)
+
+
+modf<-step(mfinal_log, trace = T, direction = "both")
+modf
+summary(modf)
+```
+
+Nos dio exactammente igual, lo que indic que este es el modelo optimo.
